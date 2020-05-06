@@ -1,5 +1,5 @@
 import json
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from flask import (
     blueprints,

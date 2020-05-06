@@ -1,3 +1,4 @@
 docs/_build
 patchserver/patch_server.db
 patchserver/reset_api_token
+.gitlab-ci.yml

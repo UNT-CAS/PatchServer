@@ -1,0 +1,54 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  
+build_docker:
+  stage: build
+  tags:
+    - kubernetes
+  image: gcr.io/kaniko-project/executor:debug
+  script:
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/installation/docker/Dockerfile --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    
+build_yaml:
+  stage: build
+  tags:
+    - kubernetes
+  script:
+    - apt update
+    - apt install gettext-base -y
+    - export DOCKER_AUTHS=`printf "$CI_DEPLOY_USER:$CI_DEPLOY_PASSWORD" | base64 -w 0`
+    - export SUBDOMAIN=applepatch
+    - echo $DOCKER_AUTHS | base64 -d
+    - export REGISTRY_AUTH=`echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$DOCKER_AUTHS\"}}}" | base64 -w 0`
+    - cat deploy.template.yml | envsubst > deploy.yml
+  artifacts:
+    paths:
+      - deploy.yml
+
+deploy_review:
+  stage: deploy
+  tags:
+    - kubernetes
+  image: bitnami/kubectl:latest
+  script:
+    - cat deploy.yml
+    - set
+    - kubectl apply -f deploy.yml
+  environment:
+    name: $CI_COMMIT_REF_NAME
+    url: $SUBDOMAIN.k8s.cas.unt.edu
+    on_stop: stop_review
+
+stop_review:
+  stage: deploy
+  tags:
+    - kubernetes
+  image: bitnami/kubectl:latest
+  when: manual
+  script:
+    - kubectl delete -f deploy.yml
+  environment:
+    name: $CI_COMMIT_REF_NAME
+    url: https://SUBDOMAIN.k8s.cas.unt.edu
+    action: stop

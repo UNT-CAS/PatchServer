@@ -1,7 +1,7 @@
-FROM ubuntu:16.04
+FROM debian:buster-slim
 
 RUN /usr/bin/apt-get update -q && \
-    /usr/bin/apt-get install -qqy python-pip gunicorn && \
+    /usr/bin/apt-get install -qqy python3-pip gunicorn && \
     /usr/bin/apt-get clean && \
     /bin/rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -10,8 +10,8 @@ COPY /patchserver /opt/ps/patchserver
 COPY /installation/docker/wsgi.py /opt/ps/
 COPY /installation/docker/config.py /opt/ps/
 
-RUN pip install -r /opt/ps/requirements.txt && \
-    pip install futures
+RUN pip3 install -r /opt/ps/requirements.txt && \
+    pip3 install futures
 
 ENV DATABASE_DIR=/var/lib/patchserver
 

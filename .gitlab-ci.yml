@@ -37,7 +37,7 @@ deploy_review:
     - kubectl apply -f deploy.yml
   environment:
     name: $CI_COMMIT_REF_NAME
-    url: $SUBDOMAIN.k8s.cas.unt.edu
+    url: $PROD_FQDN
     on_stop: stop_review
 
 stop_review:
@@ -50,5 +50,5 @@ stop_review:
     - kubectl delete -f deploy.yml
   environment:
     name: $CI_COMMIT_REF_NAME
-    url: https://SUBDOMAIN.k8s.cas.unt.edu
+    url: https://PROD_FQDN
     action: stop

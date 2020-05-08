@@ -1,4 +1,3 @@
-from builtins import str
 from datetime import datetime
 import hashlib
 from operator import itemgetter
@@ -128,7 +127,7 @@ class SoftwareTitle(db.Model):
             'name': self.name,
             'publisher': self.publisher,
             'appName': self.app_name,
-            #'bundleId': self.bundle_id,
+            'bundleId': self.bundle_id,
             'lastModified': datetime_to_iso(self.last_modified),
             'currentVersion': self.current_version,
             'requirements': sorted_criteria(requirements),
@@ -291,13 +290,13 @@ class Criteria(db.Model):
     def __init__(self, **kwargs):
         super(Criteria, self).__init__(**kwargs)
 
-        self.hash = hashlib.sha1((
+        self.hash = hashlib.sha1(
             self.name +
             self.operator +
             self.value +
             self.type_ +
             str(self.and_)
-        ).encode("utf-8")).hexdigest()
+        ).hexdigest()
 
     @property
     def orphaned(self):

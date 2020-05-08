@@ -1,7 +1,7 @@
 FROM debian:buster-slim
 
 RUN /usr/bin/apt-get update -q && \
-    /usr/bin/apt-get install -qqy python3-pip gunicorn && \
+    /usr/bin/apt-get install -qqy python3-pip gunicorn3 libmariadbclient-dev && \
     /usr/bin/apt-get clean && \
     /bin/rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -19,4 +19,4 @@ WORKDIR /opt/ps
 
 EXPOSE 5000
 
-CMD ["/usr/bin/gunicorn", "--config", "/opt/ps/config.py", "wsgi"]
+CMD ["/usr/bin/gunicorn3", "--config", "/opt/ps/config.py", "wsgi", "--preload"]

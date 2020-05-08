@@ -12,9 +12,10 @@ from patchserver.database import db
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+    if "sqlite" in str(dbapi_connection):
+         cursor = dbapi_connection.cursor()
+         cursor.execute("PRAGMA foreign_keys=ON")
+         cursor.close()
 
 
 def datetime_to_iso(date):
@@ -75,13 +76,12 @@ class SoftwareTitle(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    id_name = db.Column(db.String, unique=True)
+    id_name = db.Column(db.String(255), unique=True)
 
-    name = db.Column(db.String)
-    publisher = db.Column(db.String)
-    app_name = db.Column(db.String)
-    bundle_id = db.Column(db.String)
-
+    name = db.Column(db.String(255))
+    publisher = db.Column(db.String(255))
+    app_name = db.Column(db.String(255))
+    
     last_modified = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -144,9 +144,9 @@ class ExtensionAttribute(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    key = db.Column(db.String)
+    key = db.Column(db.String(255))
     value = db.Column(db.Text)
-    display_name = db.Column(db.String)
+    display_name = db.Column(db.String(255))
 
     software_title_id = db.Column(
         db.Integer, db.ForeignKey('software_titles.id'))
@@ -168,9 +168,9 @@ class Patch(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    version = db.Column(db.String)
+    version = db.Column(db.String(255))
     standalone = db.Column(db.Boolean, default=True)
-    minimum_operating_system = db.Column(db.String)
+    minimum_operating_system = db.Column(db.String(255))
     reboot = db.Column(db.Boolean, default=False)
 
     release_date = db.Column(db.DateTime)
@@ -224,8 +224,8 @@ class PatchKillApps(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    bundleId = db.Column(db.String)
-    appName = db.Column(db.String)
+    bundleId = db.Column(db.String(255))
+    appName = db.Column(db.String(255))
 
     patch_id = db.Column(db.Integer, db.ForeignKey('patches.id'))
 
@@ -244,8 +244,8 @@ class PatchComponent(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    name = db.Column(db.String)
-    version = db.Column(db.String)
+    name = db.Column(db.String(255))
+    version = db.Column(db.String(255))
 
     patch_id = db.Column(db.Integer, db.ForeignKey('patches.id'))
     patch = db.relationship('Patch', back_populates='components')
@@ -271,13 +271,13 @@ class Criteria(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    name = db.Column(db.String)
-    operator = db.Column(db.String)
-    value = db.Column(db.String)
-    type_ = db.Column(db.String)
+    name = db.Column(db.String(255))
+    operator = db.Column(db.String(255))
+    value = db.Column(db.String(255))
+    type_ = db.Column(db.String(255))
     and_ = db.Column(db.Boolean, default=True)
 
-    hash = db.Column(db.String, unique=True)
+    hash = db.Column(db.String(255), unique=True)
 
     software_title = db.relationship(
         'SoftwareTitleCriteria', back_populates='criteria')

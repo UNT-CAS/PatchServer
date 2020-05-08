@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: registry-auth
+  namespace: ${CI_PROJECT_PATH_SLUG}
+data:
+  .dockerconfigjson: ${REGISTRY_AUTH}
+type: kubernetes.io/dockerconfigjson
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: database-uri
+  namespace: ${CI_PROJECT_PATH_SLUG}
+data:
+  uri: ${SQLALCHEMY_DATABASE_URI_BASE64}
+type: Opaque
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${CI_PROJECT_PATH_SLUG}-${CI_BUILD_REF_NAME}
+  namespace: ${CI_PROJECT_PATH_SLUG}
+  labels:
+    app: ${CI_PROJECT_PATH_SLUG}-${CI_BUILD_REF_NAME}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${CI_PROJECT_PATH_SLUG}-${CI_BUILD_REF_NAME}
+  template:
+    metadata:
+      labels:
+        app: ${CI_PROJECT_PATH_SLUG}-${CI_BUILD_REF_NAME}
+    spec:
+      containers:
+      - name: ${CI_PROJECT_PATH_SLUG}
+        image: ${CI_REGISTRY_IMAGE}:${IMAGE}
+        env:
+          - name: SQLALCHEMY_DATABASE_URI
+            valueFrom:
+              secretKeyRef:
+                name: database-uri
+                key: uri
+      imagePullSecrets:
+      - name: registry-auth
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+  name: ${CI_PROJECT_PATH_SLUG}-${CI_BUILD_REF_NAME}
+  namespace: ${CI_PROJECT_PATH_SLUG}
+spec:
+  clusterIP: None
+  ports:
+  - name: default
+    port: 5000
+    protocol: TCP
+    targetPort: 5000
+  selector:
+    app: ${CI_PROJECT_PATH_SLUG}-${CI_BUILD_REF_NAME}
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+data:
+  auth: ${NGINX_BASIC_AUTH}
+kind: Secret
+metadata:
+  name: basic-auth
+  namespace: ${CI_PROJECT_PATH_SLUG}
+type: Opaque
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ${CI_PROJECT_PATH_SLUG}-${CI_BUILD_REF_NAME}
+  namespace: ${CI_PROJECT_PATH_SLUG}
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required :)'
+spec:
+  rules:
+  - host: ${FQDN}
+    http:
+      paths:
+      - backend:
+          serviceName: ${CI_PROJECT_PATH_SLUG}-${CI_BUILD_REF_NAME}
+          servicePort: 5000
+  tls:
+  - hosts:
+    - ${FQDN}
+    secretName: ${TLS_SECRET_NAME}

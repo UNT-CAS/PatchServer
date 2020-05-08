@@ -1,3 +1,8 @@
+stages:
+  - build
+  - yaml
+  - deploy
+
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   
@@ -9,22 +14,47 @@ build_docker:
   script:
     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
     - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/installation/docker/Dockerfile --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    - echo $CI_COMMIT_SHORT_SHA > tag.txt
+  except:
+    refs:
+      - master
+  artifacts:
+    paths:
+      - tag.txt
+      
+tag_docker:
+  stage: build
+  tags:
+    - kubernetes
+  image: gcr.io/go-containerregistry/crane:debug
+  script:
+    - crane auth login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - crane cp $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:latest
+    - echo "latest" > tag.txt
+  only:
+    refs:
+      - master
+  artifacts:
+    paths:
+      - tag.txt
     
 build_yaml:
-  stage: build
+  stage: yaml
   tags:
     - kubernetes
   script:
     - apt update
     - apt install gettext-base -y
     - export DOCKER_AUTHS=`printf "$CI_DEPLOY_USER:$CI_DEPLOY_PASSWORD" | base64 -w 0`
-    - export SUBDOMAIN=applepatch
     - echo $DOCKER_AUTHS | base64 -d
     - export REGISTRY_AUTH=`echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$DOCKER_AUTHS\"}}}" | base64 -w 0`
+    - export IMAGE=`cat tag.txt`
     - cat deploy.template.yml | envsubst > deploy.yml
+    - cat namespace.template.yml | envsubst > namespace.yml
   artifacts:
     paths:
       - deploy.yml
+      - namespace.yml
 
 deploy_review:
   stage: deploy
@@ -33,11 +63,11 @@ deploy_review:
   image: bitnami/kubectl:latest
   script:
     - cat deploy.yml
-    - set
+    - kubectl apply -f namespace.yml
     - kubectl apply -f deploy.yml
   environment:
     name: $CI_COMMIT_REF_NAME
-    url: $PROD_FQDN
+    url: https://$FDQN
     on_stop: stop_review
 
 stop_review:
@@ -50,5 +80,5 @@ stop_review:
     - kubectl delete -f deploy.yml
   environment:
     name: $CI_COMMIT_REF_NAME
-    url: https://PROD_FQDN
+    url: https://$FQDN
     action: stop

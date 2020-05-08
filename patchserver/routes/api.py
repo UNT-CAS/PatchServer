@@ -183,7 +183,7 @@ def title_create():
         name=data['name'],
         publisher=data['publisher'],
         app_name=data['appName'],
-        bundle_id=data['bundleId']
+        #bundle_id=data['bundleId']
     )
     db.session.add(new_title)
 

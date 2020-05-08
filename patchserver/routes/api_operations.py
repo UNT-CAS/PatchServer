@@ -1,3 +1,4 @@
+from builtins import str
 import ast
 import dateutil.parser
 import hashlib
@@ -86,13 +87,13 @@ def create_criteria_objects(criteria_list, software_title=None,
             return bool(value)
 
     for criterion in criteria_list:
-        criteria_hash = hashlib.sha1(
+        criteria_hash = hashlib.sha1((
             criterion['name'] +
             criterion['operator'] +
             criterion['value'] +
             criterion['type'] +
             str(eval_bool(criterion.get('and', True)))
-        ).hexdigest()
+        ).encode("utf-8")).hexdigest()
 
         criteria = Criteria.query.filter_by(hash=criteria_hash).first()
         if not criteria:

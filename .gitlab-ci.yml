@@ -15,12 +15,14 @@ build_docker:
     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
     - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/installation/docker/Dockerfile --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
     - echo $CI_COMMIT_SHORT_SHA > tag.txt
+    - echo $DEV_FQDN > fqdn.txt
   except:
     refs:
       - master
   artifacts:
     paths:
       - tag.txt
+      - fqdn.txt
       
 tag_docker:
   stage: build
@@ -31,12 +33,14 @@ tag_docker:
     - crane auth login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
     - crane cp $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:latest
     - echo "latest" > tag.txt
+    - echo $PROD_FQDN > fqdn.txt
   only:
     refs:
       - master
   artifacts:
     paths:
       - tag.txt
+      - fqdn.txt
     
 build_yaml:
   stage: yaml
@@ -49,6 +53,7 @@ build_yaml:
     - echo $DOCKER_AUTHS | base64 -d
     - export REGISTRY_AUTH=`echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$DOCKER_AUTHS\"}}}" | base64 -w 0`
     - export IMAGE=`cat tag.txt`
+    - export FQDN=`cat fqdn.txt`
     - cat deploy.template.yml | envsubst > deploy.yml
     - cat namespace.template.yml | envsubst > namespace.yml
   artifacts:
@@ -62,12 +67,13 @@ deploy_review:
     - kubernetes
   image: bitnami/kubectl:latest
   script:
+    - export FQDN=`cat fqdn.txt`
     - cat deploy.yml
     - kubectl apply -f namespace.yml
     - kubectl apply -f deploy.yml
   environment:
     name: $CI_COMMIT_REF_NAME
-    url: https://$FDQN
+    url: https://${FDQN}
     on_stop: stop_review
 
 stop_review:
@@ -77,8 +83,9 @@ stop_review:
   image: bitnami/kubectl:latest
   when: manual
   script:
+    - export FQDN=`cat fqdn.txt`
     - kubectl delete -f deploy.yml
   environment:
     name: $CI_COMMIT_REF_NAME
-    url: https://$FQDN
+    url: https://${FQDN}
     action: stop
